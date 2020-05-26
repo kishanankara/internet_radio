@@ -11,7 +11,7 @@ struct HELLO {
 int main(int argc, char **argv)
 {
     if (argc != 4) {
-        fprintf(stderr, "Usage: ./snowcast_control servername serverport udpport\n");
+        fprintf(stderr, "Usage: ./control servername serverport udpport\n");
         exit(1);
     }
     struct sockaddr_in myaddr; 

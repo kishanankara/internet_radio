@@ -29,7 +29,7 @@ int main(int argc, char **argv){
     struct sockaddr_in myaddr;
     char *msg = "WELCOME";
     if (argc < 3) {
-        fprintf(stderr, "usage: ./snowcast_server port file1 [file2 [file3 [...]]]");
+        fprintf(stderr, "usage: ./server port file1 [file2 [file3 [...]]]");
         exit(1);
     }
     fd = socket(AF_INET, SOCK_STREAM, 0);
