@@ -1,2 +1,1 @@
-# internet_radio
-Inspired by Brown's CS1680 
+Internet Radio
