@@ -4,10 +4,31 @@
 #include <stdio.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define BUFSIZE 1024
 
-int stream_track(int udpPort) { 
+int stream_track(int udpPort, int channel) {
+         int bytes, total_bytes;
+         int udpsock = socket(AF_INET, SOCK_DGRAM, 0);
+         if (udpsock < 0) {
+            close(udpsock);
+            perror("error creating the udp socket\n");
+         }
+
+         struct sockaddr_in udpservaddr;
+         char buffer[BUFSIZE];
+         udpservaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+         udpservaddr.sin_port = htons(udpPort);
+         int file = open(udpPort, O_RDONLY);
+         while(read(file, buffer, BUFSIZE)) {
+            if((bytes = sendto(udpsock, buffer, BUFSIZE, 0, (struct sockaddr *)&udpservaddr, sizeof(udpservaddr))) < 0) {
+                perror("failed sendto\n");
+                exit(0);
+            }
+            total_bytes += bytes;
+         }
     printf("Call back this function.\n");    
     return 0;
 }
@@ -75,9 +96,18 @@ int main(int argc, char **argv){
         printf("Timeout occured! \n");
      } else {
          int rec = recv(cl, &buffer, sizeof(buffer), 0);
+         socklen_t len;
+         struct sockaddr_storage addr;
+         char ipstr[1024];
+         int port;
+         int *addrlen;
+         len = sizeof addr;
+         int peerval = getpeername(cl, &addr, &len);
+         struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+         port = ntohs(s->sin_port);
+         inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
          printf("session id:%d \n", cl);
          int udpPort = ntohl(buffer[1]);
-         int status = stream_track(udpPort);
          printf("Udp Port: %d\n", ntohl(buffer[1]));
          int welcomePacket[2];
 
@@ -86,10 +116,8 @@ int main(int argc, char **argv){
          int bytes_sent = send(cl, &welcomePacket, sizeof(welcomePacket), 0);
 
          printf("Bytes sent - %d\n", bytes_sent);
-         if (status == -1) {
-            perror("Something went wrong streaming the song.\n");
-         }
-         close(cl);
+
+        close(cl);
      }
 
     }
