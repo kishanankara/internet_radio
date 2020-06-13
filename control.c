@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <netdb.h>
 #define BUFSIZE 1024
 
 struct HELLO {
@@ -9,14 +10,19 @@ struct HELLO {
     uint16_t udpPort;
 };
 
-void process_input(char* buf){
+int send_to_server(int channel, int fd) {
+    char buffer[1024];
+    printf("sending to server\n");
+    send(fd, htons(channel), sizeof channel, 0);
+    return 0;
+}
+
+int process_input(char* buf){
     switch(*buf) {
         case '1':
-            printf("Cool!\n");
-            break;
+            return 0;
         case 'q':
-            printf("Calling Quits!\n");
-
+            return 1;
     }
 }
 
@@ -44,18 +50,24 @@ int main(int argc, char **argv)
     byte_array[1]=htonl(atoi(argv[3]));    
     int data_to_send = send(fd, &byte_array, sizeof(byte_array), 0);
 
+    char hostname[128];
+    //struct hostent* host_entry;
+    gethostname(hostname, sizeof hostname);
+   // char* ip;
+   // ip = inet_ntoa((struct in_addr*)host_entry->h_addr_list[0]);
+    printf("%s -> %s\n", argv[1], "127.0.0.1");
     int buffer[2];
     int d = recv(fd, &buffer, sizeof(buffer), 0);
     //printf("Handshake Complete: %u %u",ntohl(buffer[0]), ntohl(buffer[1]));
-    printf("Sent a hello message to server.\n");
     //Listen on stdin
     fd_set readfds;
-
+    printf("Type in a number to set the station we're listening to to that number.\n");
+    printf("Type in 'q' or press CTRL+C to quit.\n");
     //FD_ZERO(&readfds);
     //FD_SET(0, &readfds);
 
     char buf[1024];
-
+    printf("> The server has %d stations.\n", ntohl(buffer[1]));
     //while(1) {
     for(;;) {
      printf("> ");
@@ -68,10 +80,15 @@ int main(int argc, char **argv)
 //    while(1) {
     //else {
     scanf("%s", buf);
-    process_input(&buf);
+    int f;
+    if ((f=process_input(&buf))) {
+        break;
+    }
+    else {
+        send_to_server(f, fd);
+    }
     }
 //}
 close(fd);
-
-    return 0;
+exit(0);
 }

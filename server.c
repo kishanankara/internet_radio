@@ -39,11 +39,6 @@ int handler(int sigint) {
     return 0;
 }
 
-struct Welcome {
-    uint8_t replyType;
-    uint16_t numStations;
-};
-
 int main(int argc, char **argv){
     int fd;
     int cl;
@@ -64,7 +59,7 @@ int main(int argc, char **argv){
     myaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     myaddr.sin_port = htons(atoi(argv[1]));
     bind(fd, (struct sockaddr_in *) &myaddr, sizeof(myaddr));
-    
+
     //Handshake
     if(listen(fd, 1) == -1) {
         perror("listen: failed");
@@ -95,7 +90,14 @@ int main(int argc, char **argv){
      } else if (rv == 0) {
         printf("Timeout occured! \n");
      } else {
+         while(1) {
          int rec = recv(cl, &buffer, sizeof(buffer), 0);
+         if(rec == 1) {
+            printf("Starting streaming to listener.\n");
+            close(cl);
+            break;
+         }
+
          socklen_t len;
          struct sockaddr_storage addr;
          char ipstr[1024];
@@ -106,20 +108,22 @@ int main(int argc, char **argv){
          struct sockaddr_in *s = (struct sockaddr_in *)&addr;
          port = ntohs(s->sin_port);
          inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
-         printf("session id:%d \n", cl);
          int udpPort = ntohl(buffer[1]);
-         printf("Udp Port: %d\n", ntohl(buffer[1]));
-         int welcomePacket[2];
 
+         int welcomePacket[2];
+         //welcome packet;
          welcomePacket[0] = htonl(0);
          welcomePacket[1] = htonl(argc-2);
+
          int bytes_sent = send(cl, &welcomePacket, sizeof(welcomePacket), 0);
 
          printf("Bytes sent - %d\n", bytes_sent);
+         /* Start sending song data through the udp Socket */
 
-        close(cl);
+         close(cl);
+         }
+
      }
-
     }
 
    // int udpsock = socket(AF_INET, SOCK_DGRAM, 0);
