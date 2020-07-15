@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <netdb.h>
+//#include "include/request.h"
 #define BUFSIZE 1024
 
 struct HELLO {
@@ -10,19 +11,22 @@ struct HELLO {
     uint16_t udpPort;
 };
 
-int send_to_server(int channel, int fd) {
+int send_to_server(int channel, int* fd) {
     char buffer[1024];
     printf("sending to server\n");
-    send(fd, htons(channel), sizeof channel, 0);
-    return 0;
+    int d = send(fd, htons(channel), sizeof channel, 0);
+    printf("sent bytes %d\n", d);
+    //return 0;
 }
 
 int process_input(char* buf){
+    printf("process input\n");
     switch(*buf) {
         case '1':
-            return 0;
-        case 'q':
+            printf("returning 1\n");
             return 1;
+        case 'q':
+            return 0;
     }
 }
 
@@ -68,7 +72,7 @@ int main(int argc, char **argv)
 
     char buf[1024];
     printf("> The server has %d stations.\n", ntohl(buffer[1]));
-    //while(1) {
+    // while(1) {
     for(;;) {
      printf("> ");
     //int retval = select(1, &readfds, NULL, NULL, NULL);
@@ -80,15 +84,15 @@ int main(int argc, char **argv)
 //    while(1) {
     //else {
     scanf("%s", buf);
-    int f;
-    if ((f=process_input(&buf))) {
+    int f[1], y;
+    if (!(y=process_input(&buf))) {
         break;
     }
-    else {
-        send_to_server(f, fd);
+     f[0] = htons(y);
+     printf("printing the value of f %d\n", f[0]);
+      int d = send(fd, &f, sizeof f, 0);
+      printf("sent bytes: %d\n", d);
     }
-    }
-//}
 close(fd);
 exit(0);
 }

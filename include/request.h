@@ -1,4 +1,5 @@
-#include <stdio.h>
+#ifndef REQUEST_H
+#define REQUEST_H
 
 typedef struct {
     uint8_t commandType = 0;
@@ -10,4 +11,4 @@ typedef struct {
     uint16_t stationNumber;
 } set_station
 
-
+#endif

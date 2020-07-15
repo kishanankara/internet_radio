@@ -41,119 +41,83 @@ int handler(int sigint) {
 
 int main(int argc, char **argv){
     int fd;
+    int listener;
     int cl;
     struct sockaddr_in myaddr;
-    char *msg = "WELCOME";
     if (argc < 3) {
         fprintf(stderr, "usage: ./server port file1 [file2 [file3 [...]]]");
         exit(1);
     }
-    fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) {
+    listener = socket(AF_INET, SOCK_STREAM, 0);
+    if (listener < 0) {
         perror("Something went wrong creating the socket!");
     }
 
-//    val->replyType = 0;
-//    val->numStations = argc-2;
     myaddr.sin_family = AF_INET;
     myaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     myaddr.sin_port = htons(atoi(argv[1]));
-    bind(fd, (struct sockaddr_in *) &myaddr, sizeof(myaddr));
+    bind(listener, (struct sockaddr_in *) &myaddr, sizeof(myaddr));
 
     //Handshake
-    if(listen(fd, 1) == -1) {
+    if(listen(listener, 10) == -1) {
         perror("listen: failed");
-        close(fd);
+        close(listener);
         exit(1);
     }
     int buffer[2];
+
+    fd_set r_fds;
+    fd_set master;
+    FD_SET(listener, &master);
+    fd = listener;
+    int fdmin=listener;
     while(1) {
-      cl = accept(fd, NULL, NULL);
-
-   /* Basically we want to handle requests for connections that have 
-       been accepted, while we keep processing incoming requests. */
-
-     fd_set readfds;
-     struct timeval tv;
-
-     FD_ZERO(&readfds);
-
-     FD_SET(cl, &readfds);
-
-     tv.tv_sec = 10;
-     tv.tv_usec = 500000;
-
-     int rv = select(cl+1, &readfds, NULL, NULL, &tv);
-
-     if (rv == -1) {
-        perror("select failed");
-     } else if (rv == 0) {
-        printf("Timeout occured! \n");
-     } else {
-         while(1) {
-         int rec = recv(cl, &buffer, sizeof(buffer), 0);
-         if(rec == 1) {
-            printf("Starting streaming to listener.\n");
-            close(cl);
-            break;
+         r_fds = master;
+         int rv = select(fd+1, &r_fds, NULL, NULL, NULL);
+         //FD_SET(cl, &r_fds);
+         struct sockaddr_in peer_addr;
+         char addr[50];
+         socklen_t peer_addr_len = sizeof(peer_addr);
+         for (int i = fdmin; i<= fd; i++) {
+             if (FD_ISSET(i, &r_fds)) {
+                 if (i == listener) {
+                    cl = accept(fd, (struct sockaddr*)&peer_addr, &peer_addr_len);
+                    fd = cl;
+                    FD_SET(cl, &master);
+                    if (cl>0) {
+                    inet_ntop(AF_INET, &peer_addr.sin_port, addr, sizeof(addr));
+                    printf("Accepted connection: cl->%d , %s:%d\n", cl, addr, peer_addr.sin_port);
+                    }
+                    // Clean buffer for next op.
+                    buffer[0] = NULL;
+                    buffer[1] = NULL;
+                    int udpPort;
+                    int rec = recv(cl, buffer, sizeof buffer, 0);
+                    printf("buffer %d %d %d\n", cl, ntohl(buffer[0]), ntohl(buffer[1]));
+                    socklen_t len;
+                    udpPort = ntohl(buffer[4]);
+                    int welcomePacket[2];
+                    welcomePacket[0] = htonl(0);
+                    welcomePacket[1] = htonl(argc-2);
+                    int bytes_sent = send(cl, &welcomePacket, sizeof(welcomePacket), 0);
+                     }
+             }
+             else {
+                   for (int j=fdmin; j <=fd; j++) {
+                       if(FD_ISSET(j, &master)) {
+                           if(j != listener && j != i) {
+                               int buffer[2];
+                               int rec;
+                               if((rec = recv(cl, buffer, sizeof buffer, 0)) > 0)
+                               {
+                                   printf("value in buffer %d\n", ntohs(buffer[0]));
+                               }
+                           }
+                       }
+                }
+             }
          }
-
-         socklen_t len;
-         struct sockaddr_storage addr;
-         char ipstr[1024];
-         int port;
-         int *addrlen;
-         len = sizeof addr;
-         int peerval = getpeername(cl, &addr, &len);
-         struct sockaddr_in *s = (struct sockaddr_in *)&addr;
-         port = ntohs(s->sin_port);
-         inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
-         int udpPort = ntohl(buffer[1]);
-
-         int welcomePacket[2];
-         //welcome packet;
-         welcomePacket[0] = htonl(0);
-         welcomePacket[1] = htonl(argc-2);
-
-         int bytes_sent = send(cl, &welcomePacket, sizeof(welcomePacket), 0);
-
-         printf("Bytes sent - %d\n", bytes_sent);
-         /* Start sending song data through the udp Socket */
-
-         close(cl);
-         }
-
      }
-    }
-
-   // int udpsock = socket(AF_INET, SOCK_DGRAM, 0);
-  //  if (udpsock < 0) {
-  //      close(udpsock);
-  //      perror("error creating the udp socket\n");
-   // }
-
-   // struct sockaddr_in udpservaddr;
-   // char * my_message = "this is a test message to portray how much data can be sent";
-   // udpservaddr.sin_family = AF_INET;
-   // udpservaddr.sin_port = htons(atoi(udpPort));
-
-   // if(sendto(udpsock, my_message, strlen(my_message), 0, (struct sockaddr *)&udpservaddr, sizeof(udpservaddr)) < 0) {
-    //    perror("failed sendto\n");
-   //     return 0;
-   // }
-
-    //struct addrinfo hints, servinfo, *p;
-    //int rv;
-    //int numbytes;
-    //memset(&hints, 0, sizeof hints);
-    //hints.ai_family = AF_INET;
-    //hints.ai_socktype = SOCK_DGRAM;
-
-    //if ((rv = getaddrinfo(NULL, udpPort, &hints, &servinfo)) != 0) {
-    //    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    //    return i;
-    //}
-
     close(fd);
     return 0;
 }
